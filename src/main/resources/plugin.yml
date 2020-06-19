@@ -1,0 +1,19 @@
+name: ChatMute
+version: ${project.version}
+main: net.teamfruit.muteplugin.ChatMute
+api-version: 1.15.2
+authors: [Kamesuta]
+description: うるさいやつミュートプラグイン
+website: https://www.teamfruit.net
+
+commands:
+  mute:
+    description: Mute Command
+    permission: chatmute.mute
+    usage: |-
+      /mute <player> プレイヤーをミュートします
+  unmute:
+    description: Unmute Command
+    permission: chatmute.unmute
+    usage: |-
+      /mute <player> プレイヤーのミュートを解除します
