@@ -1,7 +1,6 @@
 name: ChatMute
 version: ${project.version}
 main: net.teamfruit.muteplugin.ChatMute
-api-version: 1.15.2
 authors: [Kamesuta]
 description: うるさいやつミュートプラグイン
 website: https://www.teamfruit.net
@@ -11,7 +10,14 @@ commands:
     description: Mute Command
     permission: chatmute.mute
     usage: |-
-      /mute <player> プレイヤーをミュートします
+      /mute <player> [mute|reduce|asterisk|blank|garbled]... プレイヤーをミュートします
+      /mute <player> ミュート
+      /mute <player> mute ミュート
+      /mute <player> reduce 連投禁止(デフォルトクールダウン: 60秒)
+      /mute <player> asterisk 発言を伏せる(*に置き換える)
+      /mute <player> blank 発言を消す(名前だけチャットに流れる)
+      /mute <player> garbled 日本語を文字化けさせる
+      /mute <player> reduce asterisk 連投禁止かつ伏せ字
   unmute:
     description: Unmute Command
     permission: chatmute.unmute

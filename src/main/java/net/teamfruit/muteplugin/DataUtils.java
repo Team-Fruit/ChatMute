@@ -28,8 +28,8 @@ public class DataUtils {
             reader = new JsonReader(new InputStreamReader(stream, Charsets.UTF_8));
             return gson.fromJson(reader, clazz);
         } finally {
-            IOUtils.closeQuietly(reader);
-            IOUtils.closeQuietly(stream);
+            closeQuietly(reader);
+            closeQuietly(stream);
         }
     }
 
@@ -54,8 +54,17 @@ public class DataUtils {
             gson.toJson(object, clazz, writer);
             return true;
         } finally {
-            IOUtils.closeQuietly(writer);
-            IOUtils.closeQuietly(stream);
+            closeQuietly(writer);
+            closeQuietly(stream);
+        }
+    }
+
+    private static void closeQuietly(Closeable closeable) {
+        try {
+            if (closeable != null)
+                closeable.close();
+        } catch (final IOException ioe) {
+            // ignore
         }
     }
 
@@ -66,7 +75,7 @@ public class DataUtils {
 
     private static @Nullable <T> String writeString(final Class<T> clazz, final T object)
             throws Exception {
-        final StringBuilderWriter sbw = new StringBuilderWriter();
+        final StringWriter sbw = new StringWriter();
         if (writeWriter(sbw, clazz, object))
             return sbw.toString();
         return null;
@@ -97,7 +106,7 @@ public class DataUtils {
     }
 
     private static <T> T readFile(final File file, final Class<T> clazz) throws Exception {
-        return readStream(FileUtils.openInputStream(file), clazz);
+        return readStream(new FileInputStream(file), clazz);
     }
 
     public static @Nullable <T> T loadFile(final File file, final Class<T> clazz, final @Nullable String description) {
@@ -116,7 +125,7 @@ public class DataUtils {
     }
 
     private static <T> boolean writeFile(final File file, final Class<T> clazz, final T object) throws Exception {
-        return writeStream(FileUtils.openOutputStream(file), clazz, object);
+        return writeStream(new FileOutputStream(file), clazz, object);
     }
 
     public static <T> boolean saveFile(
