@@ -1,8 +1,8 @@
 package net.teamfruit.muteplugin;
 
 import com.google.common.base.Predicates;
-import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -46,10 +46,8 @@ public final class ChatMute extends JavaPlugin implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         String uuid = player.getUniqueId().toString();
-        MuteModel.MuteProfile profile = muted.mutes.get(uuid);
-        if (profile == null)
-            return;
-        EnumSet set = profile.modes;
+        MuteModel.MuteProfile profile = muted.mutes.computeIfAbsent(uuid, id -> new MuteModel.MuteProfile(uuid, player.getName(), EnumSet.of(MuteModel.MuteMode.REDUCE)));
+        EnumSet<MuteModel.MuteMode> set = profile.modes;
         if (set == null)
             set = EnumSet.noneOf(MuteModel.MuteMode.class);
         if (set.contains(MuteModel.MuteMode.MUTE)) {
@@ -60,10 +58,10 @@ public final class ChatMute extends JavaPlugin implements Listener {
         if (set.contains(MuteModel.MuteMode.REDUCE)) {
             long time = System.currentTimeMillis();
             long duration = time - profile.lastChat;
-            long cooldown = getConfig().getInt("cooldown", 60000);
+            long cooldown = getConfig().getInt("cooldown", 10000);
             if (duration < cooldown) {
                 event.setCancelled(true);
-                player.sendMessage("わお！とっても香ばしいメッセージですね！あと" + ((cooldown - duration) / 1000) + "秒待ってください！");
+                player.sendMessage(ChatColor.LIGHT_PURPLE + "[かめすたプラグイン] " + ChatColor.RED + "わお！とっても香ばしいメッセージですね！あと" + ((cooldown - duration) / 1000) + "秒待ってください！");
                 return;
             } else {
                 profile.lastChat = time;
@@ -90,12 +88,14 @@ public final class ChatMute extends JavaPlugin implements Listener {
         }
         if ("mute".equalsIgnoreCase(label)) {
             String playerName = args[0];
-            Player player = Bukkit.getServer().getPlayer(playerName);
-            if (player == null) {
+            List<Player> players = Bukkit.selectEntities(sender, playerName).stream()
+                    .filter(Player.class::isInstance)
+                    .map(Player.class::cast)
+                    .collect(Collectors.toList());
+            if (players.isEmpty()) {
                 sender.sendMessage("プレイヤーが見つかりません");
                 return true;
             }
-            String uuid = player.getUniqueId().toString();
             EnumSet<MuteModel.MuteMode> set;
             if (args.length > 1) {
                 set = Arrays.stream(args)
@@ -106,27 +106,31 @@ public final class ChatMute extends JavaPlugin implements Listener {
             } else {
                 set = EnumSet.of(MuteModel.MuteMode.MUTE);
             }
-            muted.mutes.put(uuid, new MuteModel.MuteProfile(uuid, player.getName(), set));
+            players.forEach(player -> {
+                String uuid = player.getUniqueId().toString();
+                muted.mutes.put(uuid, new MuteModel.MuteProfile(uuid, player.getName(), set));
+            });
             DataUtils.saveFile(mutedPath, MuteModel.class, muted, "Muted Player List");
-            sender.sendMessage(player.getName() + "を" + set.stream().map(e -> e.title).collect(Collectors.joining("と")) + "にしました");
+            sender.sendMessage(playerName + "を" + set.stream().map(e -> e.title).collect(Collectors.joining("と")) + "にしました");
             return true;
         }
         if ("unmute".equalsIgnoreCase(label)) {
             String playerName = args[0];
-            Player player = Bukkit.getServer().getPlayer(playerName);
-            List<MuteModel.MuteProfile> remove = muted.mutes.values().stream()
-                    .filter(e -> StringUtils.equalsIgnoreCase(playerName, e.name) || (player != null && StringUtils.equalsIgnoreCase(player.getUniqueId().toString(), e.id)))
+            List<Player> players = Bukkit.selectEntities(sender, playerName).stream()
+                    .filter(Player.class::isInstance)
+                    .map(Player.class::cast)
                     .collect(Collectors.toList());
-            muted.mutes.values().removeAll(remove);
+            muted.mutes.values().removeIf(e -> players.stream().map(p -> p.getPlayerProfile().getId()).anyMatch(x -> e.id.equals(x.toString())));
             DataUtils.saveFile(mutedPath, MuteModel.class, muted, "Muted Player List");
-            sender.sendMessage(remove.stream().map(e -> e.name).collect(Collectors.joining(", ")) + "のミュートを解除しました");
+            sender.sendMessage(players.stream().map(Player::getName).collect(Collectors.joining(", ")) + "のミュートを解除しました");
             return true;
         }
         return false;
     }
 
-    @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> pp = new ArrayList();
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> pp = new ArrayList<>();
         if (args.length == 1) {
             List<String> listbase = getServer().getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList());
             String str = args[0];
